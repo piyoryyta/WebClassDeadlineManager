@@ -1,0 +1,8 @@
+tqdm
+schedule
+configparser
+numpy
+plyer
+beautifulsoup4
+requests
+pystray
