@@ -1,4 +1,5 @@
 import WebClassScraper as wc
+import requests
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -17,11 +18,22 @@ import pystray
 from pystray import Icon
 from PIL import Image
 import webbrowser
+from packaging import version
+from tendo import singleton
 
 ini = configparser.ConfigParser()
 ini.read("./userConfig.ini", "UTF-8")
 
-version = "1.0"
+ver = "v1.2"
+
+def check_update():
+	try:
+		response = requests.get("https://api.github.com/repos/piyoryyta/WebClassDeadlineManager/releases/latest")
+		if version.parse(response.json()["tag_name"]) > version.parse(ver):
+			return response.json()["tag_name"]
+	except:
+		pass
+	return None
 
 ##GUI Class
 class GUI(tk.Frame):
@@ -35,7 +47,7 @@ class GUI(tk.Frame):
 			about_root.geometry("400x70")
 			about_root.resizable(False,False)
 			about_root.grab_set()
-			aboutLabel = tk.Label(about_root, text="WebClass非公式 期日管理システム ver "+version+"(2022/05/18)\nby piyoryyta")
+			aboutLabel = tk.Label(about_root, text="WebClass非公式 期日管理システム "+ver+"\nby piyoryyta")
 			aboutLabel.pack()
 			sep = ttk.Separator(about_root)
 			sep.pack(fill="both")
@@ -45,8 +57,8 @@ class GUI(tk.Frame):
 
 		super().__init__(master)
 		self.master = master
-		master.title(u"WebClass非公式 期日管理システム ver "+version)
-		master.geometry("1000x500")
+		master.title(u"WebClass非公式 期日管理システム ver "+ver)
+		master.geometry("1000x600")
 		master.minsize(210,70)
 		master.iconbitmap(default="./icon.ico")
 		master.protocol("WM_DELETE_WINDOW", lambda:self.close())
@@ -57,9 +69,9 @@ class GUI(tk.Frame):
 		menuBar.add_cascade(label="ファイル", menu=menu_file)
 		menu_file.add_command(label="コース情報更新(終わるまで止まります)", command=self.get_courses)
 		menu_file.add_command(label="終了", command=master.quit)
-		menu_config = tk.Menu(master)
-		menu_config.add_command(label="", command=show_about)
-		menuBar.add_cascade(label="設定", menu=menu_config)
+		# menu_config = tk.Menu(master)
+		# menu_config.add_command(label="", command=show_about)
+		# menuBar.add_cascade(label="設定", menu=menu_config)
 		menu_help = tk.Menu(master)
 		menuBar.add_cascade(label="ヘルプ", menu=menu_help)
 		menu_help.add_command(label="このプログラムについて", command=show_about)
@@ -68,17 +80,28 @@ class GUI(tk.Frame):
 		courseFrame = tk.Frame(master)
 		courseFrame.place(rely=0.05, relwidth=1, relheight=0.85)
 
+		self.sort="courseName"
 		self.courseTree = ttk.Treeview(courseFrame, height = 40, columns = ("courseName", "type", "title", "reportDue"))
 		self.courseTree.column('#0',width=0, stretch='no')
 		self.courseTree.column('courseName',width=450)
 		self.courseTree.column('type',width=50)
 		self.courseTree.column('title',width=250)
 		self.courseTree.column('reportDue',width=120)
-		self.courseTree.heading("courseName", text="コース名", command=self.reloadTreebyName)
+		self.courseTree.heading("courseName", text="コース名", command= lambda: self.reloadTree(sort="courseName"))
 		self.courseTree.heading("type", text="種類")
 		self.courseTree.heading("title", text="名前")
-		self.courseTree.heading("reportDue", text="期日", command=self.reloadTreebyDue)
+		self.courseTree.heading("reportDue", text="期日", command= lambda: self.reloadTree(sort="due"))
 		self.courseTree.pack(side="left")
+
+		filterFrame = tk.Frame(courseFrame)
+		filterFrame.pack(anchor=tk.NE)
+		self.reportFilter = tk.BooleanVar()
+		reportFilterCheck = tk.Checkbutton(filterFrame, variable=self.reportFilter, text="レポートをフィルター", command= lambda :self.reloadTree(mask=["レポート"]) if self.reportFilter.get()==True else self.reloadTree())
+		reportFilterCheck.pack(anchor=tk.SW)
+
+		self.dueFilter = tk.BooleanVar()
+		dueFilterCheck = tk.Checkbutton(filterFrame, variable=self.dueFilter, text="期日でフィルター", command= lambda :self.reloadTree())
+		dueFilterCheck.pack(anchor=tk.SW)
 
 		statsFrame = tk.Frame(master)
 		statsFrame.place(rely=0.9, relwidth=1, relheight=0.1)
@@ -90,6 +113,12 @@ class GUI(tk.Frame):
 		self.statsProgress = ttk.Progressbar(statsFrame, length=400)
 		self.statsProgress.pack()
 
+		update = check_update()
+		if update!=None:
+			updateLabel = tk.Label(statsFrame, background='gray',foreground="white")
+			updateLabel["text"] = "新しいバージョンがあります:"+update
+			updateLabel.pack(anchor=tk.SE)
+
 		if (ini["UserInfo"]["password"]=="" or ini["UserInfo"]["userName"]=="" ) and ini["Config"]["offline"]!="True":
 			self.show_login()
 		else:
@@ -98,7 +127,7 @@ class GUI(tk.Frame):
 	def start_threads(self):
 			schedule.every(30).minutes.do(self.get_courses)
 			self.sc()
-			self.reloadTree()
+			self.reloadTree(sort="courseName")
 			threading.Thread(target=self.first_get).start()
 
 	def show_login(self):
@@ -117,7 +146,8 @@ class GUI(tk.Frame):
 		login_root.geometry("300x70")
 		login_root.resizable(0,0)
 		login_root.attributes('-toolwindow', True)
-		login_root.protocol("WM_DELETE_WINDOW", lambda:self.close())
+		login_root.attributes("-topmost", True)
+		login_root.protocol("WM_DELETE_WINDOW", lambda:self.quit())
 
 		usernameLabel = tk.Label(login_root,text="ユーザー名")
 		usernameLabel.grid(row=0,column=0)
@@ -129,6 +159,7 @@ class GUI(tk.Frame):
 		passwordLabel.grid(row=1,column=0)
 		passwordEntry = tk.Entry(login_root,show="●")
 		passwordEntry.grid(row=1,column=1)
+		passwordEntry.bind("<Return>", lambda event: login_proceed())
 
 		proceesButton = tk.Button(login_root, text="ログイン", command=login_proceed)
 		proceesButton.grid(row=2,column=1)
@@ -201,7 +232,9 @@ class GUI(tk.Frame):
 		self.getNearDeadline(new_report,show=not hideNoti)
 		np.save("course.npy", self.course_info, allow_pickle=True)
 
-	def reloadTree(self, course_info = None, sort="courseName"):
+	def reloadTree(self, course_info = None, sort=None, mask = None):
+		if sort!=None:
+			self.sort=sort
 		for row in self.courseTree.get_children():
 			self.courseTree.delete(row)
 		try:
@@ -209,28 +242,21 @@ class GUI(tk.Frame):
 				course_info = np.load("course.npy", allow_pickle=True)
 			iid=0
 			course_info = wc.parse_courses(course_info)
-			course_info.sort(key=lambda x:x[sort])
+			course_info.sort(key=lambda x:x[self.sort])
 			for course in course_info:
+				if ((self.dueFilter.get()==False) or self.isDeadlineNear(course)) and (mask==None or course["type"] in mask):
 					self.courseTree.insert(parent="", index="end", iid=iid, value=(course["courseName"], course["type"], course["title"], course["due"]))
-					iid+=1
+				iid+=1
 		except Exception as e:
 			print(str(sys.exc_info()[1]))
 			for row in self.courseTree.get_children():
 				self.courseTree.delete(row)
-	def reloadTreebyName(self):
-		self.reloadTree(sort="courseName")
-	def reloadTreebyDue(self):
-		self.reloadTree(sort="due")
 
-	def getNearDeadline(self,courses,now=datetime.datetime.now(),days=int(ini["Config"]["deadlinedays"]), show=True):
+	def getNearDeadline(self,courses, show = True,days = int(ini["Config"]["deadlinedays"])):
 		due_courses = []
 		for course in courses:
-			try:
-				due = datetime.datetime.strptime(course["due"],"%Y/%m/%d %H:%M")
-				if(due-now<=datetime.timedelta(days=days)):
+				if(self.isDeadlineNear(course)):
 					due_courses.append(course)
-			except ValueError:
-				pass
 		if(due_courses!=[] and show):
 			notification.notify(
 				title="期日の近いレポートがあります",
@@ -240,6 +266,15 @@ class GUI(tk.Frame):
 				timeout=10
 				)
 		return due_courses
+
+	def isDeadlineNear(self, course,now = datetime.datetime.now(),days = int(ini["Config"]["deadlinedays"])):
+		try:
+			due = datetime.datetime.strptime(course["due"],"%Y/%m/%d %H:%M")
+			if(due-now<=datetime.timedelta(days=days)):
+				return True
+		except ValueError:
+			pass
+		return False
 
 class Tray():
 	def __init__(self,app = None):

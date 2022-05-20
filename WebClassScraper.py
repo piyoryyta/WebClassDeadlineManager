@@ -50,8 +50,6 @@ def login(domain_name = domain_name):
 		"val" : PASSWORD,
 		"language" : "JAPANESE"
 	}
-	print(login_info)
-	print(PASSWORD)
 	session.cookies.clear()
 	url_login = domain_name + "/webclass/login.php"
 	res = session.post(url_login, data=login_info, headers={"User-Agent":"WCDM Scraper(https://github.com/piyoryyta/)"})

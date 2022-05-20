@@ -6,3 +6,4 @@ plyer
 beautifulsoup4
 requests
 pystray
+packaging
