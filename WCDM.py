@@ -105,12 +105,12 @@ class GUI(tk.Frame):
 		def login_proceed():
 			ini["UserInfo"]["userName"]=usernameEntry.get()
 			ini["UserInfo"]["password"]=passwordEntry.get()
+			wc.setUserInfo(user=usernameEntry.get(), password=passwordEntry.get(), save=False)
 			login_root.destroy()
-			wc.setUserInfo(user=ini["UserInfo"]["userName"], password=ini["UserInfo"]["password"], save=False)
 			self.start_threads()
 		def guest_login():
-			login_root.destroy()
 			ini["Config"]["offline"]="True"
+			login_root.destroy()
 			self.start_threads()
 
 		login_root = tk.Toplevel()

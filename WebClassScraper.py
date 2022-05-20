@@ -12,7 +12,7 @@ ini.read("./userConfig.ini", "UTF-8")
 #ドメイン
 domain_name = ini["Config"]["domainname"]
 #ログイン情報
-USER = ini["UserInfo"]["userName"]
+USER = ini["UserInfo"]["username"]
 PASSWORD = ini["UserInfo"]["password"]
 session = requests.session()
 
@@ -24,23 +24,34 @@ login_info = {
 
 ##ユーザー情報をセーブ
 def setUserInfo(user=USER, password=PASSWORD, save=True):
-	ini.set("UserInfo", "userName", user)
+	global login_info, USER, PASSWORD
+	ini.set("UserInfo", "username", user)
 	ini.set("UserInfo", "password", password)
 
 	if(save):
 		with open('userConfig.ini', 'w') as file:
 			ini.write(file)
-	USER = ini["UserInfo"]["userName"]
-	PASSWORD = ini["UserInfo"]["password"]
 
+	login_info = {
+		"username" : user,
+		"val" : password,
+		"language" : "JAPANESE"
+	}
+	USER = user
+	PASSWORD = password
+
+	print(login_info)
+
+
+##ログイン後、コース一覧画面を取得
+def login(domain_name = domain_name):
 	login_info = {
 		"username" : USER,
 		"val" : PASSWORD,
 		"language" : "JAPANESE"
 	}
-
-##ログイン後、コース一覧画面を取得
-def login(domain_name = domain_name, login_info = login_info):
+	print(login_info)
+	print(PASSWORD)
 	session.cookies.clear()
 	url_login = domain_name + "/webclass/login.php"
 	res = session.post(url_login, data=login_info, headers={"User-Agent":"WCDM Scraper(https://github.com/piyoryyta/)"})
