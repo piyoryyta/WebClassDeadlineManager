@@ -1,3 +1,7 @@
 
 *.pyc
 course.npy
+/__pycache__
+/build
+/dist
+WCDM.spec
