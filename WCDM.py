@@ -16,6 +16,7 @@ from plyer import notification
 import pystray
 from pystray import Icon
 from PIL import Image
+import webbrowser
 
 ini = configparser.ConfigParser()
 ini.read("./userConfig.ini", "UTF-8")
@@ -27,6 +28,8 @@ class GUI(tk.Frame):
 
 	def __init__(self,master = None):
 
+		def show_git():
+			webbrowser.open("https://github.com/piyoryyta/WebClassDeadlineManager")
 		def show_about():
 			about_root = tk.Toplevel()
 			about_root.geometry("400x70")
@@ -55,12 +58,12 @@ class GUI(tk.Frame):
 		menu_file.add_command(label="コース情報更新(終わるまで止まります)", command=self.get_courses)
 		menu_file.add_command(label="終了", command=master.quit)
 		menu_config = tk.Menu(master)
-		menu_config.add_command(label="このプログラムについて", command=show_about)
+		menu_config.add_command(label="", command=show_about)
 		menuBar.add_cascade(label="設定", menu=menu_config)
 		menu_help = tk.Menu(master)
-		menuBar.add_cascade(label="ヘルプ", menu=menu_config)
+		menuBar.add_cascade(label="ヘルプ", menu=menu_help)
 		menu_help.add_command(label="このプログラムについて", command=show_about)
-		menu_help.add_command(label="配布ページへ(Github)", command=show_about)
+		menu_help.add_command(label="配布ページへ(Github)", command=show_git)
 
 		courseFrame = tk.Frame(master)
 		courseFrame.place(rely=0.05, relwidth=1, relheight=0.85)
@@ -87,11 +90,50 @@ class GUI(tk.Frame):
 		self.statsProgress = ttk.Progressbar(statsFrame, length=400)
 		self.statsProgress.pack()
 
+		if (ini["UserInfo"]["password"]=="" or ini["UserInfo"]["userName"]=="" ) and ini["Config"]["offline"]!="True":
+			self.show_login()
+		else:
+			self.start_threads()
 
-		schedule.every(30).minutes.do(self.get_courses)
-		self.sc()
-		self.reloadTree()
-		threading.Thread(target=self.first_get).start()
+	def start_threads(self):
+			schedule.every(30).minutes.do(self.get_courses)
+			self.sc()
+			self.reloadTree()
+			threading.Thread(target=self.first_get).start()
+
+	def show_login(self):
+		def login_proceed():
+			ini["UserInfo"]["userName"]=usernameEntry.get()
+			ini["UserInfo"]["password"]=passwordEntry.get()
+			login_root.destroy()
+			wc.setUserInfo(user=ini["UserInfo"]["userName"], password=ini["UserInfo"]["password"], save=False)
+			self.start_threads()
+		def guest_login():
+			login_root.destroy()
+			ini["Config"]["offline"]="True"
+			self.start_threads()
+
+		login_root = tk.Toplevel()
+		login_root.geometry("300x70")
+		login_root.resizable(0,0)
+		login_root.attributes('-toolwindow', True)
+		login_root.protocol("WM_DELETE_WINDOW", lambda:self.close())
+
+		usernameLabel = tk.Label(login_root,text="ユーザー名")
+		usernameLabel.grid(row=0,column=0)
+		usernameEntry = tk.Entry(login_root)
+		usernameEntry.grid(row=0,column=1)
+		usernameEntry.insert(tk.END, ini["UserInfo"]["userName"])
+
+		passwordLabel = tk.Label(login_root,text="パスワード")
+		passwordLabel.grid(row=1,column=0)
+		passwordEntry = tk.Entry(login_root,show="●")
+		passwordEntry.grid(row=1,column=1)
+
+		proceesButton = tk.Button(login_root, text="ログイン", command=login_proceed)
+		proceesButton.grid(row=2,column=1)
+		guestButton = tk.Button(login_root, text="オフラインモード", command=guest_login)
+		guestButton.grid(row=2,column=2)
 
 	def sc(self):
 		schedule.run_pending()
