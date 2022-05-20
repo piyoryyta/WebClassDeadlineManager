@@ -3,14 +3,11 @@ import requests
 import sys
 import tkinter as tk
 from tkinter import ttk
-import tqdm
 import time
 import random
 import schedule
 import threading
 import datetime
-import logging
-from pprint import pprint
 import configparser
 import numpy as np
 from plyer import notification
@@ -19,7 +16,6 @@ from pystray import Icon
 from PIL import Image
 import webbrowser
 from packaging import version
-from tendo import singleton
 
 ini = configparser.ConfigParser()
 ini.read("./userConfig.ini", "UTF-8")
